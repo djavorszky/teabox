@@ -6,6 +6,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -61,6 +63,20 @@ public class IO {
     if (!Files.exists(folder)) {
       Files.createDirectory(folder);
     }
+  }
+
+  public List<String> listWavFiles() throws IOException {
+    Path folder = Paths.get(recordingTargetFolder);
+
+    if (!Files.exists(folder)) {
+      throw new IOException("Recording folder does not exist: " + recordingTargetFolder);
+    }
+
+    return Files.list(folder).map(path -> {
+      String name = path.toFile().getName();
+
+      return name.substring(0, name.lastIndexOf("."));
+    }).collect(Collectors.toList());
   }
 
 

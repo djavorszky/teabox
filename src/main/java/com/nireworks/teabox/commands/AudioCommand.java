@@ -1,7 +1,9 @@
 package com.nireworks.teabox.commands;
 
 import com.nireworks.teabox.service.AudioService;
+import com.nireworks.teabox.utility.IO;
 import java.io.IOException;
+import java.util.List;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,13 @@ import org.springframework.shell.standard.ShellOption;
 public class AudioCommand {
 
   private AudioService service;
+
+  private IO io;
+
+  @Autowired
+  public void setIo(IO io) {
+    this.io = io;
+  }
 
   @Autowired
   public void setService(AudioService service) {
@@ -50,5 +59,28 @@ public class AudioCommand {
     service.finish();
 
     return "If recording was happening, not anymore";
+  }
+
+  @ShellMethod("List recordings")
+  public String list() {
+    List<String> recordings;
+    try {
+      recordings = io.listWavFiles();
+    } catch (IOException e) {
+      e.printStackTrace();
+      return null;
+    }
+
+    StringBuilder sb = new StringBuilder(recordings.size() * 3 + 1);
+
+    sb.append("Known records:\n");
+
+    recordings.forEach(r -> {
+      sb.append("> ");
+      sb.append(r);
+      sb.append("\n");
+    });
+
+    return sb.toString();
   }
 }
