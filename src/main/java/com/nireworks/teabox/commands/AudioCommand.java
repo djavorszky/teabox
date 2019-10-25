@@ -38,7 +38,7 @@ public class AudioCommand {
   public String record(@ShellOption({"-f", "--to-file"}) String filename) {
     try {
       service.record(filename);
-    } catch (IOException | LineUnavailableException e) {
+    } catch (LineUnavailableException e) {
       return "Failed recording: " + e.getMessage();
     }
 

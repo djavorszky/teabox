@@ -1,2 +1,10 @@
 teabox:
   prompt: "c[teabox]> "
+  audioformat:
+    sampleRate: 32000
+    sampleSizeInBits: 16
+    channels: 2
+    signed: true
+    bigEndian: true
+  recording:
+    targetFolder: "recordings"

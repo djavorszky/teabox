@@ -1,8 +1,8 @@
 package com.nireworks.teabox.service;
 
+import com.nireworks.teabox.utility.IO;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -12,18 +12,31 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AudioService {
 
+  private final AudioFileFormat.Type fileType = AudioFileFormat.Type.WAVE;
+
   private boolean recording = false;
-  private AudioFileFormat.Type fileType = AudioFileFormat.Type.WAVE;
   private TargetDataLine line = null;
-  private AudioInputStream ais = null;
 
+  private AudioFormat audioFormat;
+  private IO io;
 
-  public void record(String fileName) throws LineUnavailableException, IOException {
+  @Autowired
+  public void setAudioFormat(AudioFormat audioFormat) {
+    this.audioFormat = audioFormat;
+  }
+
+  @Autowired
+  public void setIo(IO io) {
+    this.io = io;
+  }
+
+  public void record(String wavName) throws LineUnavailableException {
     if (recording) {
       System.out.println("Already recording");
       return;
@@ -31,40 +44,24 @@ public class AudioService {
 
     recording = true;
 
-    try {
-      final AudioFormat format = getFormat();
-      DataLine.Info info = new DataLine.Info(
-          TargetDataLine.class, format);
-      line = (TargetDataLine) AudioSystem.getLine(info);
-      line.open(format);
-      line.start();
+    DataLine.Info info = new DataLine.Info(TargetDataLine.class, audioFormat);
 
-      Thread captureThread = new Thread(() -> {
-        AudioInputStream ais = new AudioInputStream(line);
+    line = (TargetDataLine) AudioSystem.getLine(info);
+    line.open(audioFormat);
+    line.start();
 
-        File wavFile = new File(fileName);
+    Thread captureThread = new Thread(() -> {
 
-        try {
-          AudioSystem.write(ais, fileType, wavFile);
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      });
+      try (AudioInputStream ais = new AudioInputStream(line)) {
+        File wavFile = io.createWavFile(wavName);
 
-      captureThread.start();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+        AudioSystem.write(ais, fileType, wavFile);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    });
 
-  }
-
-  private AudioFormat getFormat() {
-    float sampleRate = 16000;
-    int sampleSizeInBits = 8;
-    int channels = 2;
-    boolean signed = true;
-    boolean bigEndian = true;
-    return new AudioFormat(sampleRate, sampleSizeInBits, channels, signed, bigEndian);
+    captureThread.start();
   }
 
   /**
@@ -78,41 +75,22 @@ public class AudioService {
 
     line.stop();
     line.close();
-
-    System.out.println("Finished");
   }
 
-  public void play(String filename)
+  public void play(String recordingName)
       throws IOException, UnsupportedAudioFileException, LineUnavailableException {
 
     if (recording) {
       throw new LineUnavailableException("recording in progress");
     }
 
-    try (AudioInputStream ais = AudioSystem.getAudioInputStream(loadFile(filename))) {
+    try (AudioInputStream ais =
+        AudioSystem.getAudioInputStream(io.loadWavFile(recordingName))) {
       Clip clip = AudioSystem.getClip();
 
       clip.open(ais);
 
       clip.start();
     }
-
   }
-
-  private File loadFile(String filename) throws IOException {
-    URL resource = getClass().getClassLoader().getResource(filename);
-
-    if (resource != null) {
-      return new File(resource.getFile());
-    }
-
-    File file = new File(filename);
-
-    if (!file.exists()) {
-      throw new IOException("file does not exist: " + filename);
-    }
-
-    return file;
-  }
-
 }
